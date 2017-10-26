@@ -29,6 +29,7 @@ namespace del
             WriteLogNew.writeLog("软件启动!", logpath, "info");
             SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " " + "软件启动!\n");
 
+            label1.Text = "当前删除开始时间:" + Properties.Settings.Default.deltime;
             ttdel = new Thread(new ThreadStart(scanPathThread));
             ttdel.IsBackground = true;
             ttdel.Start();
