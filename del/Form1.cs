@@ -29,7 +29,7 @@ namespace del
             WriteLogNew.writeLog("软件启动!", logpath, "info");
             SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " " + "软件启动!\n");
 
-            label1.Text = "当前删除开始时间:" + Properties.Settings.Default.deltime;
+            label1.Text = "删除开始时间:" + Properties.Settings.Default.deltime +" 删除:"+Properties.Settings.Default.deltimebefore.ToString()+"小时之前!";
             ttdel = new Thread(new ThreadStart(scanPathThread));
             ttdel.IsBackground = true;
             ttdel.Start();
@@ -38,8 +38,14 @@ namespace del
         {
 
             //判断该文件夹下是否有文件
+            if (!Directory.Exists(spath))
+            {
+                WriteLogNew.writeLog("文件夹:" + spath + "路径不存在!" , logpath, "error");
+                return;
+            }
             string[] files = Directory.GetFiles(spath, "*.*", SearchOption.TopDirectoryOnly);
             WriteLogNew.writeLog("获取文件夹:" + spath + "下的文件数量:" + files.Length, logpath, "info");
+            SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + "获取文件夹:" + spath + "下的文件数量:" + files.Length + "\n");
             foreach (string file in files)
             {
                 if (Properties.Settings.Default.delbyCreateTime) //根据创建时间删除
@@ -72,11 +78,13 @@ namespace del
                         {
                             File.Delete(file);
                             WriteLogNew.writeLog("删除文件成功:" + file, logpath, "info");
+                            SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + "删除文件成功:" + file + "\n");
                             Thread.Sleep(50);
                         }
                         catch (Exception ee)
                         {
                             WriteLogNew.writeLog("删除文件失败:" + file + ee.ToString(), logpath, "error");
+                            SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + "删除文件失败:" + file + "\n");
                         }
                     }
                 }
@@ -85,42 +93,49 @@ namespace del
  
         private void getdirs(string spath)
         {
-            DirectoryInfo theFolder = new DirectoryInfo(spath);
-
-            foreach(DirectoryInfo nextFolder in theFolder.GetDirectories())
+            try
             {
-                WriteLogNew.writeLog("文件夹名称:" + nextFolder.FullName, logpath, "info");
-                SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + "文件夹名称:" + nextFolder.FullName + "\n");
-                delfiles(nextFolder.FullName);
-                Thread.Sleep(100);
-                if (nextFolder.GetDirectories().Length ==0) //没有子文件夹了
+                if (!Directory.Exists(spath))
                 {
-                    if (nextFolder.GetFiles().Length == 0)
-                    {
-                        WriteLogNew.writeLog("该文件夹为空:"+ nextFolder.FullName,logpath,"info");
-                        try
-                        {
-                            nextFolder.Delete();
-                            WriteLogNew.writeLog("删除文件夹成功:" + nextFolder.FullName, logpath, "info");
-                            SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + "删除文件夹成功:" + nextFolder.FullName + "\n");
-                        }
-                        catch (Exception ee)
-                        {
+                    WriteLogNew.writeLog("文件夹:" + spath + "路径不存在!", logpath, "error");
+                    return;
+                }
+                DirectoryInfo theFolder = new DirectoryInfo(spath);
 
-                            WriteLogNew.writeLog("删除文件夹失败:" + nextFolder.FullName +ee.ToString(), logpath, "error");
-                            SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + "删除文件夹失败:" + nextFolder.FullName + "\n");
+                foreach (DirectoryInfo nextFolder in theFolder.GetDirectories())
+                {
+                    WriteLogNew.writeLog("文件夹名称:" + nextFolder.FullName, logpath, "info");
+                    SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + "文件夹名称:" + nextFolder.FullName + "\n");
+                    delfiles(nextFolder.FullName);
+                    Thread.Sleep(100);
+                    if (nextFolder.GetDirectories().Length == 0) //没有子文件夹了
+                    {
+                        if (nextFolder.GetFiles().Length == 0)
+                        {
+                            WriteLogNew.writeLog("该文件夹为空:" + nextFolder.FullName, logpath, "info");
+                            try
+                            {
+                                nextFolder.Delete();
+                                WriteLogNew.writeLog("删除文件夹成功:" + nextFolder.FullName, logpath, "info");
+                                SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + "删除文件夹成功:" + nextFolder.FullName + "\n");
+                            }
+                            catch (Exception ee)
+                            {
+                                WriteLogNew.writeLog("删除文件夹失败:" + nextFolder.FullName + ee.ToString(), logpath, "error");
+                                SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + "删除文件夹失败:" + nextFolder.FullName + "\n");
+                            }
                         }
-                      
+                    }
+                    else
+                    {
+                        getdirs(nextFolder.FullName);
                     }
                 }
-                else
-                {
-                    getdirs(nextFolder.FullName);
-                }
-             
             }
-
-
+            catch (Exception  ee )
+            {
+                WriteLogNew.writeLog("获取文件夹目录异常:" + ee.ToString(), logpath, "error"); ;
+            }
         }
         private void scanPathThread()
         {
@@ -135,6 +150,7 @@ namespace del
                     {
                         foreach (string spath in Properties.Settings.Default.delpaths)
                         {
+                            WriteLogNew.writeLog("开始处理目录:"+spath,logpath,"info");
                             delfiles(spath);
                             Thread.Sleep(100);
                             //判断目录下是否有文件夹
@@ -146,7 +162,6 @@ namespace del
                         WriteLogNew.writeLog("异常:" + ee.ToString(), logpath, "error");
                         throw;
                     }
-
                     Thread.Sleep(30000);
                 }// if ((dtnow  > dtdeltime) && (dtnow < dtto))
             }
