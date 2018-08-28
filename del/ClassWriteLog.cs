@@ -32,7 +32,7 @@ namespace del
                 Log(log, w,type);
                 w.Close();
             }
-            catch (Exception ee)
+            catch 
             { 
                //
             }

@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace del
@@ -29,7 +28,39 @@ namespace del
             WriteLogNew.writeLog("软件启动!", logpath, "info");
             SetText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " " + "软件启动!\n");
 
-            label1.Text = "删除开始时间:" + Properties.Settings.Default.deltime +" 删除:"+Properties.Settings.Default.deltimebefore.ToString()+"小时之前!";
+
+            string deltimeinfo = Properties.Settings.Default.deltime;
+
+            deltimebefore = Properties.Settings.Default.deltimebefore;
+
+            if (Properties.Settings.Default.delbyCreateTime)
+            {
+                label1.Text = "删除开始时间:" + Properties.Settings.Default.deltime + " 删除:" + Properties.Settings.Default.deltimebefore.ToString() + "小时之前!";
+            }
+            else
+            {
+                label1.Text = "删除修改时间:" + Properties.Settings.Default.deltime + " 删除:" + Properties.Settings.Default.deltimebefore.ToString() + "小时之前!";
+            }
+
+
+            strdeltimeList = new List<string>();
+            if (deltimebefore >= 24)
+            {
+                strdeltimeList.Add(deltimeinfo);
+            }
+            else
+            {
+
+                int timedelsecond = convertSecond(deltimeinfo);
+                int daysecond = convertSecond("24:00:00");
+                while (timedelsecond < daysecond)
+                {
+                    string deltimetemp = convertTime(timedelsecond);
+                    strdeltimeList.Add(deltimetemp);
+                    timedelsecond += deltimebefore * 3600;
+                }
+            }
+
             ttdel = new Thread(new ThreadStart(scanPathThread));
             ttdel.IsBackground = true;
             ttdel.Start();
@@ -51,7 +82,7 @@ namespace del
                 if (Properties.Settings.Default.delbyCreateTime) //根据创建时间删除
                 {
                     DateTime dtdel = File.GetCreationTime(file);
-                    if (dtdel.AddHours(Properties.Settings.Default.deltimebefore) < DateTime.Now) //创建时间 + 10小时 < 当前时间了
+                    if (dtdel.AddHours(deltimebefore) < DateTime.Now) //创建时间 + 10小时 < 当前时间了
                     {
                         //可以删除文件了
                         try
@@ -134,40 +165,55 @@ namespace del
             }
             catch (Exception  ee )
             {
-                WriteLogNew.writeLog("获取文件夹目录异常:" + ee.ToString(), logpath, "error"); ;
+                WriteLogNew.writeLog("获取文件夹目录异常:" + ee.ToString(), logpath, "error"); 
             }
         }
         private void scanPathThread()
         {
             while (true)
             {
-                DateTime dtdeltime = Convert.ToDateTime(Properties.Settings.Default.deltime);
-                DateTime dtnow = DateTime.Now;
-                DateTime dtto = dtdeltime.AddSeconds(31);
-                if ((dtnow  > dtdeltime) && (dtnow < dtto))
-                {
-                    try
+                try
+                { 
+                    foreach (string deltimet in strdeltimeList)
                     {
-                        foreach (string spath in Properties.Settings.Default.delpaths)
+                        DateTime dtdeltime = Convert.ToDateTime(deltimet);
+                        DateTime dtnow = DateTime.Now;
+                        DateTime dtto = dtdeltime.AddSeconds(31);
+                        if ((dtnow > dtdeltime) && (dtnow < dtto))
                         {
-                            WriteLogNew.writeLog("开始处理目录:"+spath,logpath,"info");
-                            delfiles(spath);
-                            Thread.Sleep(100);
-                            //判断目录下是否有文件夹
-                            getdirs(spath);
-                        }
-                    }
-                    catch (Exception ee)
-                    {
-                        WriteLogNew.writeLog("异常:" + ee.ToString(), logpath, "error");
-                        throw;
-                    }
-                    Thread.Sleep(30000);
-                }// if ((dtnow  > dtdeltime) && (dtnow < dtto))
+                            try
+                            {
+                                foreach (string spath in Properties.Settings.Default.delpaths)
+                                {
+                                    WriteLogNew.writeLog("开始处理目录:" + spath, logpath, "info");
+                                    delfiles(spath);
+                                    Thread.Sleep(100);
+                                    //判断目录下是否有文件夹
+                                    getdirs(spath);
+                                }
+                            }
+                            catch (Exception ee)
+                            {
+                                WriteLogNew.writeLog("异常:" + ee.ToString(), logpath, "error");
+
+                            }
+                            Thread.Sleep(10000);
+                        }// if ((dtnow  > dtdeltime) && (dtnow < dtto))
+                    }//   foreach (string deltimet in strdeltimeList)
+                }
+                catch (Exception ee)
+                {
+                    WriteLogNew.writeLog("异常:" + ee.ToString(), logpath, "error"); 
+                }
+
+                Thread.Sleep(30000);
             }
         }
         private string logpath;
         private Thread ttdel;
+        private string deltimeinfo;
+        private int deltimebefore = 72;
+        private List<string> strdeltimeList;
         #region 消息框代理
         private delegate void SetTextCallback(string text);
         private delegate void SetSelectCallback(object Msge);
@@ -221,6 +267,72 @@ namespace del
             }
         }
         #endregion
+
+
+        /// <summary>
+        /// 将总帧数转换为标准时间格式
+        /// </summary>
+        /// <param name="second_num">总帧数</param>
+        /// <returns></returns>
+        public static string convertTime(int second_num)
+        {
+
+            int second = second_num % 60;//获取总秒数
+            string second_str = second.ToString();
+            if (second >= 10)
+            {
+                second_str = second_str.ToString();
+            }
+            else
+            {
+                second_str = "0" + second_str.ToString();
+            }
+
+            int second_remain = second_num / 60;//除去帧数和秒数，得到剩余总秒数
+            int minute = second_remain % 60;//获得总分钟数
+            string minute_str = minute.ToString();
+            if (minute >= 10)
+            {
+                minute_str = minute_str.ToString();
+            }
+            else
+            {
+                minute_str = "0" + minute_str.ToString();
+            }
+
+            int minute_remain = second_remain / 60;//除去帧数，秒数和分钟数，得到剩余总分钟数
+            int hour = minute_remain % 60;//得到总小时数
+            string hour_str = hour.ToString();
+            if (hour >= 10)
+            {
+                hour_str = hour_str.ToString();
+            }
+            else
+            {
+                hour_str = "0" + hour_str.ToString();
+            }
+
+            string time = hour_str + ":" + minute_str + ":" + second_str ;
+            //string time = hour_str + ":" + minute_str + ":" + second_str + ":00";
+            return time;
+
+        }
+        /// <summary>
+        /// 将标准时间格式转化为帧数
+        /// </summary>
+        /// <param name="time">表示时间的字符串</param>
+        /// <returns></returns>
+        public static int convertSecond(string time)
+        {
+            int time_all = 0;
+      
+            int time_h = Convert.ToInt32(time.Split(':')[0]) * 3600 ;
+            int time_m = Convert.ToInt32(time.Split(':')[1]) * 60 ;
+            int time_s = Convert.ToInt32(time.Split(':')[2]) ;
+            time_all = time_h + time_m + time_s ;
+            
+            return time_all;
+        }
 
     }
 }

@@ -9,7 +9,7 @@
 &lt;/ArrayOfString&gt;</Value>
     </Setting>
     <Setting Name="deltimebefore" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">240</Value>
+      <Value Profile="(Default)">4</Value>
     </Setting>
     <Setting Name="delbyCreateTime" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
